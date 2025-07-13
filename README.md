@@ -188,7 +188,9 @@ This project is licensed under the MIT License.
 
 ## 👨‍💻 Developer
 
-**Shree Ram Rajasthan Kulfi House** - Bringing authentic Rajasthani flavors to your doorstep since 2000.
+**Sachin T** - Full Stack Web Developer
+
+This project was developed as a modern web application for Shree Ram Rajasthan Kulfi House, showcasing full-stack development skills with React.js frontend and Node.js backend.
 
 ---
 
