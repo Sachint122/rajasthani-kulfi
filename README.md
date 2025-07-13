@@ -193,5 +193,3 @@ This project is licensed under the MIT License.
 This project was developed as a modern web application for Shree Ram Rajasthan Kulfi House, showcasing full-stack development skills with React.js frontend and Node.js backend.
 
 ---
-
-**Note**: This is a full-stack web application showcasing modern web development practices with React.js frontend and Node.js backend. 
