@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
+import {
+  Box, Button, TextField, Select, MenuItem, InputLabel, FormControl, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Alert, CircularProgress, Stack, useTheme, useMediaQuery, IconButton, AppBar, Toolbar
+} from '@mui/material';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AdminNavbar from '../../components/AdminNavbar';
+import MenuIcon from '@mui/icons-material/Menu';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -19,6 +25,8 @@ const SalesManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const getAuthHeaders = () => {
     const token = sessionStorage.getItem('token');
@@ -233,7 +241,7 @@ const SalesManagement = () => {
     // --- LAST VALUE STATUS ---
     y += 12;
     doc.setFont('helvetica', 'bold');
-    doc.text('Last Total Book Value:', 14, y);
+    doc.text('Last Total Value:', 14, y);
     doc.setFont('helvetica', 'normal');
     doc.text(`${lastTotalBookValue}`, 70, y);
     y += 8;
@@ -260,128 +268,126 @@ const SalesManagement = () => {
   };
 
   return (
-    <div>
-      <h2 style={{ color: '#ff8800', marginBottom: '1rem' }}>Sales Management</h2>
-      {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
-      {success && <div style={{ color: 'green', marginBottom: '1rem' }}>{success}</div>}
-      <form onSubmit={handleSubmit} style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <select name="category" value={form.category} onChange={handleChange} required style={{ padding: '0.5rem', minWidth: '140px' }}>
-          <option value="">Select Category</option>
-          {categories.map(c => (
-            <option key={c._id} value={c.name}>{c.name}</option>
-          ))}
-        </select>
-        <select
-          name="productName"
-          value={form.productName}
-          onChange={handleChange}
-          required
-          style={{ padding: '0.5rem', minWidth: '180px' }}
-          disabled={!form.category}
-        >
-          <option value="">{form.category ? 'Select Product Name' : 'Select Category First'}</option>
-          {products
-            .filter(p => p.category && p.category.trim().toLowerCase() === form.category.trim().toLowerCase())
-            .map(p => p.name)
-            .filter((name, idx, arr) => arr.indexOf(name) === idx) // unique names
-            .map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-        </select>
-        <input
-          name="quantity"
-          value={form.quantity}
-          onChange={handleChange}
-          placeholder="Quantity"
-          type="number"
-          min="1"
-          max={selectedProduct ? selectedProduct.stock : undefined}
-          required
-          style={{ padding: '0.5rem', minWidth: '100px' }}
-        />
-        <select
-          name="customerName"
-          value={form.customerName}
-          onChange={handleChange}
-          style={{ padding: '0.5rem', minWidth: '160px' }}
-        >
-          <option value="">Select Customer (optional)</option>
-          {users.map(u => (
-            <option key={u._id || u.id} value={u.name}>{u.name}</option>
-          ))}
-        </select>
-        <input
-          name="customerPhone"
-          value={form.customerPhone}
-          onChange={handleChange}
-          placeholder="Customer Phone (optional)"
-          style={{ padding: '0.5rem', minWidth: '160px' }}
-          readOnly={!!form.customerName}
-        />
-        <button type="submit" style={{ background: '#ff8800', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '4px', fontWeight: 600 }}
-          disabled={loading || !form.productId || !form.quantity || Number(form.quantity) < 1}>
-          {loading ? 'Saving...' : 'Record Sale'}
-        </button>
-      </form>
-      <table style={{
-        borderTop: '3px solid #ff8800',
-        borderBottom: '3px solid #ff8800',
-        textAlign:'left',
-        width: '100%',
-        background: '#fff',
-        borderRadius: '16px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-        overflow: 'hidden',
-        marginTop: '2rem',
-        borderCollapse: 'separate',
-        borderSpacing: 0,
-        border: '3px solid #ff8800',
-      }}>
-        <thead style={{
-          background: '#ff8800',
-          color: '#fff',
-          fontWeight: 700,
-          position: 'sticky',
-          top: 0,
-          zIndex: 1,
-        }}>
-          <tr>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Product Name</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Price</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Unit</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Quantity</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Total</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Customer Phone</th>
-            <th style={{ padding: '1rem' }}>Send PDF</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sales.map((s, idx) => (
-            <tr key={s._id}
-              style={{
-                background: idx % 2 === 0 ? '#f8f9fa' : '#fff',
-                transition: 'background 0.2s',
-                cursor: 'pointer',
-              }}
-              onMouseOver={e => e.currentTarget.style.background = '#ffe0b2'}
-              onMouseOut={e => e.currentTarget.style.background = idx % 2 === 0 ? '#f8f9fa' : '#fff'}
-            >
-              <td style={{ padding: '1rem', fontWeight: 500, borderRight: '2px solid #ffd699', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>{s.productName}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>₹{s.price}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>{s.unit}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>{s.quantity}</td>
-              <td style={{ padding: '1rem', fontWeight: 600, color: '#388e3c', borderRight: '2px solid #ffd699', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>₹{s.total}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>{s.customerPhone}</td>
-              <td style={{ padding: '1rem', borderBottom: idx !== sales.length - 1 ? '3px solid #ff8800' : 'none' }}>
-                <button onClick={() => handleSendPdf(s)} style={{ background: '#25D366', color: '#fff', border: 'none', padding: '0.5rem 1.2rem', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,211,102,0.15)', letterSpacing: 1 }}>
-                  Send PDF
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <AdminNavbar />
+      <Box sx={{ paddingTop: { xs: '56px', md: '30px' } }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+          <Box sx={{ flexGrow: 1, p: { xs: 1, md: 0 } }}>
+            <Typography variant="h4" color="primary" sx={{ mb: 2, fontWeight: 700 }}>
+              Sales Management
+            </Typography>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+            <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <FormControl sx={{ minWidth: 140 }}>
+                <InputLabel>Select Category</InputLabel>
+                <Select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  label="Select Category"
+                  required
+                >
+                  <MenuItem value=""><em>Select Category</em></MenuItem>
+                  {categories.map(c => (
+                    <MenuItem key={c._id} value={c.name}>{c.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 180 }} disabled={!form.category}>
+                <InputLabel>Select Product Name</InputLabel>
+                <Select
+                  name="productName"
+                  value={form.productName}
+                  onChange={handleChange}
+                  label="Select Product Name"
+                  required
+                  disabled={!form.category}
+                >
+                  <MenuItem value=""><em>{form.category ? 'Select Product Name' : 'Select Category First'}</em></MenuItem>
+                  {products
+                    .filter(p => p.category && p.category.trim().toLowerCase() === form.category.trim().toLowerCase())
+                    .map(p => p.name)
+                    .filter((name, idx, arr) => arr.indexOf(name) === idx)
+                    .map(name => (
+                      <MenuItem key={name} value={name}>{name}</MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+              <TextField
+                name="quantity"
+                value={form.quantity}
+                onChange={handleChange}
+                label="Quantity"
+                type="number"
+                min={1}
+                max={selectedProduct ? selectedProduct.stock : undefined}
+                required
+                sx={{ minWidth: 100 }}
+              />
+              <FormControl sx={{ minWidth: 160 }}>
+                <InputLabel>Select Customer (optional)</InputLabel>
+                <Select
+                  name="customerName"
+                  value={form.customerName}
+                  onChange={handleChange}
+                  label="Select Customer (optional)"
+                >
+                  <MenuItem value=""><em>Select Customer (optional)</em></MenuItem>
+                  {users.map(u => (
+                    <MenuItem key={u._id || u.id} value={u.name}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                name="customerPhone"
+                value={form.customerPhone}
+                onChange={handleChange}
+                label="Customer Phone (optional)"
+                InputProps={{ readOnly: !!form.customerName }}
+                sx={{ minWidth: 160 }}
+              />
+              <Button type="submit" variant="contained" color="warning" sx={{ fontWeight: 600 }}
+                disabled={loading || !form.productId || !form.quantity || Number(form.quantity) < 1}>
+                {loading ? 'Saving...' : 'Record Sale'}
+              </Button>
+            </Box>
+            <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3, boxShadow: 3 }}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ background: '#ff8800' }}>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Product Name</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Price</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Unit</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Quantity</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Total</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Customer Phone</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Send PDF</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sales.map((s) => (
+                    <TableRow key={s._id} hover>
+                      <TableCell sx={{ fontWeight: 500 }}>{s.productName}</TableCell>
+                      <TableCell>₹{s.price}</TableCell>
+                      <TableCell>{s.unit}</TableCell>
+                      <TableCell>{s.quantity}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#388e3c' }}>₹{s.total}</TableCell>
+                      <TableCell>{s.customerPhone}</TableCell>
+                      <TableCell>
+                        <IconButton color="success" onClick={() => handleSendPdf(s)}>
+                          <PictureAsPdfIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Box>
+      </Box>
+    </>
   );
 };
 

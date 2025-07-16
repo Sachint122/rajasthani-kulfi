@@ -1,4 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Box, Button, TextField, Select, MenuItem, InputLabel, FormControl, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Alert, CircularProgress, IconButton, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery, IconButton as MuiIconButton, AppBar, Toolbar
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CategoryIcon from '@mui/icons-material/Category';
+import LabelIcon from '@mui/icons-material/Label';
+import AdminNavbar from '../../components/AdminNavbar';
+import MenuIcon from '@mui/icons-material/Menu';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -12,7 +22,6 @@ const ProductManagement = () => {
   const [showForm, setShowForm] = useState(false);
   const [productNames, setProductNames] = useState([]);
   const [categories, setCategories] = useState([]); // [{name, units}]
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newCategoryUnit, setNewCategoryUnit] = useState('');
   const [showProductNameForm, setShowProductNameForm] = useState(false);
@@ -20,6 +29,9 @@ const ProductManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [unitForms, setUnitForms] = useState({}); // { [categoryName]: { show: bool, value: string } }
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -83,6 +95,18 @@ const ProductManagement = () => {
       productData.name = toTitleCase(productData.name);
       productData.category = toTitleCase(productData.category);
       productData.unit = toTitleCase(productData.unit);
+      // Prevent duplicate product (same name and category)
+      if (!editingId) {
+        const duplicate = products.find(p =>
+          p.name.toLowerCase() === productData.name.toLowerCase() &&
+          p.category.toLowerCase() === productData.category.toLowerCase()
+        );
+        if (duplicate) {
+          setError('Product with this name and category already exists.');
+          setLoading(false);
+          return;
+        }
+      }
       if (editingId) {
         await fetch(`${API_BASE}/products/${editingId}`, {
           method: 'PUT',
@@ -110,7 +134,6 @@ const ProductManagement = () => {
     setForm({ name: p.name, price: p.price, stock: p.stock, category: p.category, unit: p.unit || '' });
     setEditingId(p._id);
     setShowForm(true);
-    setShowCategoryForm(false);
     setShowProductNameForm(false);
   };
 
@@ -130,7 +153,6 @@ const ProductManagement = () => {
     setForm({ name: '', price: '', stock: '', category: '', unit: '' });
     setEditingId(null);
     setShowForm(true);
-    setShowCategoryForm(false);
     setShowProductNameForm(false);
   };
 
@@ -147,7 +169,6 @@ const ProductManagement = () => {
       });
       setNewCategory('');
       setNewCategoryUnit('');
-      setShowCategoryForm(false);
       await fetchAll();
       if (showForm) setForm(f => ({ ...f, category: toTitleCase(newCategory) }));
     } catch (err) {
@@ -173,7 +194,6 @@ const ProductManagement = () => {
     setLoading(false);
   };
   const openCategoryForm = () => {
-    setShowCategoryForm(true);
     setShowForm(false);
     setShowProductNameForm(false);
   };
@@ -271,7 +291,6 @@ const ProductManagement = () => {
   const openProductNameForm = () => {
     setShowProductNameForm(true);
     setShowForm(false);
-    setShowCategoryForm(false);
   };
 
   // Get units for selected category
@@ -279,143 +298,219 @@ const ProductManagement = () => {
   const unit = selectedCategory ? selectedCategory.unit : '';
 
   return (
-    <div>
-      <h2 style={{ color: '#ff8800', marginBottom: '1rem' }}>Product Management</h2>
-      {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
-      {loading && <div style={{ color: '#888', marginBottom: '1rem' }}>Loading...</div>}
-      <button onClick={handleAddClick} style={{ background: '#ff8800', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '4px', fontWeight: 600, marginBottom: '1.5rem' }}>Add Product</button>
-      <button onClick={openCategoryForm} style={{ background: '#2ecc40', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '4px', fontWeight: 600, marginLeft: '1rem', marginBottom: '1.5rem' }}>Add Category/Type</button>
-      <button onClick={openProductNameForm} style={{ background: '#1976d2', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '4px', fontWeight: 600, marginLeft: '1rem', marginBottom: '1.5rem' }}>Add Product Name</button>
-      {/* Category management area */}
-      <div style={{ margin: '1rem 0', display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Categories/Types:</div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {categories.map(cat => (
-              <span key={cat.name} style={{ background: '#eee', padding: '0.3rem 0.8rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                {cat.name}
-                <button onClick={() => handleRemoveCategory(cat.name)} style={{ background: '#ff8800', color: '#fff', border: 'none', borderRadius: '50%', width: '1.5em', height: '1.5em', fontWeight: 700, cursor: 'pointer', marginLeft: '0.3rem' }}>×</button>
-                {/* Unit management for this category */}
-                <span style={{ marginLeft: '0.5em', display: 'flex', alignItems: 'center', gap: '0.3em' }}>
-                  {cat.units && cat.units.map(unit => (
-                    <span key={unit} style={{ background: '#2ecc40', color: '#fff', borderRadius: '2em', padding: '0.1em 0.7em', marginRight: '0.2em', display: 'inline-flex', alignItems: 'center' }}>
-                      {unit}
-                      <button onClick={() => handleRemoveUnit(cat.name, unit)} style={{ background: '#ff8800', color: '#fff', border: 'none', borderRadius: '50%', width: '1.2em', height: '1.2em', fontWeight: 700, cursor: 'pointer', marginLeft: '0.2em', fontSize: '0.9em' }}>×</button>
-                    </span>
-                  ))}
-                  {unitForms[cat.name]?.show ? (
-                    <>
-                      <input value={unitForms[cat.name].value} onChange={e => handleUnitInputChange(cat.name, e.target.value)} placeholder="New Unit" style={{ padding: '0.2em 0.5em', minWidth: '70px' }} />
-                      <button onClick={() => handleAddUnit(cat.name)} style={{ background: '#2ecc40', color: '#fff', border: 'none', borderRadius: '4px', padding: '0.2em 0.7em', fontWeight: 600, marginLeft: '0.2em' }}>Add</button>
-                      <button onClick={() => closeUnitForm(cat.name)} style={{ background: '#888', color: '#fff', border: 'none', borderRadius: '4px', padding: '0.2em 0.7em', fontWeight: 600, marginLeft: '0.2em' }}>Cancel</button>
-                    </>
-                  ) : (
-                    <button onClick={() => openUnitForm(cat.name)} style={{ background: '#2ecc40', color: '#fff', border: 'none', borderRadius: '4px', padding: '0.2em 0.7em', fontWeight: 600, marginLeft: '0.2em' }}>+ Unit</button>
-                  )}
-                </span>
-              </span>
-            ))}
-          </div>
-          {showCategoryForm && (
-            <form onSubmit={handleAddCategory} style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
-              <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="New Category/Type" required style={{ padding: '0.5rem', minWidth: '120px' }} />
-              <input value={newCategoryUnit} onChange={e => setNewCategoryUnit(e.target.value)} placeholder="Unit (e.g. per unit, kg)" required style={{ padding: '0.5rem', minWidth: '120px' }} />
-              <button type="submit" style={{ background: '#ff8800', color: '#fff', border: 'none', padding: '0.3rem 1rem', borderRadius: '4px', fontWeight: 600 }}>Add Category</button>
-              <button type="button" onClick={() => { setShowCategoryForm(false); setNewCategory(''); setNewCategoryUnit(''); }} style={{ background: '#888', color: '#fff', border: 'none', padding: '0.3rem 1rem', borderRadius: '4px', fontWeight: 600 }}>Cancel</button>
-            </form>
-          )}
-        </div>
-        {/* Product name management area (local only) */}
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Product Names:</div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {productNames.map(name => (
-              <span key={name} style={{ background: '#eee', padding: '0.3rem 0.8rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                {name}
-                <button onClick={() => handleRemoveProductName(name)} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: '50%', width: '1.5em', height: '1.5em', fontWeight: 700, cursor: 'pointer', marginLeft: '0.3rem' }}>×</button>
-              </span>
-            ))}
-          </div>
-          {showProductNameForm && (
-            <form onSubmit={handleAddProductName} style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <select value={newProductNameCategory} onChange={e => setNewProductNameCategory(e.target.value)} required style={{ padding: '0.5rem', minWidth: '120px' }}>
-                <option value="">Select Category</option>
-                {categories.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-              </select>
-              <input value={newProductName} onChange={e => setNewProductName(e.target.value)} placeholder="New Product Name" required style={{ padding: '0.5rem', minWidth: '120px' }} />
-              <button type="submit" style={{ background: '#1976d2', color: '#fff', border: 'none', padding: '0.3rem 1rem', borderRadius: '4px', fontWeight: 600 }}>Add</button>
-              <button type="button" onClick={() => { setShowProductNameForm(false); setNewProductName(''); setNewProductNameCategory(''); }} style={{ background: '#888', color: '#fff', border: 'none', padding: '0.3rem 1rem', borderRadius: '4px', fontWeight: 600 }}>Cancel</button>
-            </form>
-          )}
-        </div>
-      </div>
-      {showForm && (
-        <form onSubmit={handleSubmit} style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <select name="name" value={form.name} onChange={handleChange} required style={{ padding: '0.5rem', minWidth: '160px' }}>
-            <option value="">Select Product Name</option>
-            {productNames.map(name => <option key={name} value={name}>{name}</option>)}
-          </select>
-          <input name="price" value={form.price} onChange={handleChange} placeholder="Price" type="number" required style={{ padding: '0.5rem', minWidth: '100px' }} />
-          <input name="stock" value={form.stock} onChange={handleChange} placeholder="Stock" type="number" required style={{ padding: '0.5rem', minWidth: '100px' }} />
-          <select name="category" value={form.category} onChange={handleChange} required style={{ padding: '0.5rem', minWidth: '140px' }}>
-            <option value="">Select Category/Type</option>
-            {categories.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-          </select>
-          {/* Show unit as read-only */}
-          <input name="unit" value={unit} readOnly placeholder="Unit" style={{ padding: '0.5rem', minWidth: '100px', background: '#f5f5f5', color: '#888' }} />
-          <button type="submit" style={{ background: '#ff8800', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '4px', fontWeight: 600 }}>{editingId ? 'Update' : 'Add'}</button>
-          <button type="button" onClick={() => { setShowForm(false); setEditingId(null); setForm({ name: '', price: '', stock: '', category: '', unit: '' }); }} style={{ background: '#888', color: '#fff', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '4px', fontWeight: 600 }}>Cancel</button>
-        </form>
-      )}
-      <table style={{
-        borderTop: '3px solid #ff8800',
-        borderBottom: '3px solid #ff8800',
-        textAlign:'left',
-        width: '100%',
-        background: '#fff',
-        borderRadius: '16px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-        overflow: 'hidden',
-        marginTop: '2rem',
-        borderCollapse: 'separate',
-        borderSpacing: 0,
-        border: '3px solid #ff8800',
-      }}>
-        <thead style={{ background: '#ff8800', color: '#fff', fontWeight: 700, position: 'sticky', top: 0, zIndex: 1 }}>
-          <tr>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Name</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Price</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Stock</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Category/Type</th>
-            <th style={{ padding: '1rem', borderRight: '2px solid #ffd699' }}>Unit</th>
-            <th style={{ padding: '1rem' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p, idx) => (
-            <tr key={p._id || p.id}
-              style={{
-                background: idx % 2 === 0 ? '#f8f9fa' : '#fff',
-                transition: 'background 0.2s',
-                cursor: 'pointer',
-              }}
-              onMouseOver={e => e.currentTarget.style.background = '#ffe0b2'}
-              onMouseOut={e => e.currentTarget.style.background = idx % 2 === 0 ? '#f8f9fa' : '#fff'}
-            >
-              <td style={{ padding: '1rem', fontWeight: 500, borderRight: '2px solid #ffd699', borderBottom: idx !== products.length - 1 ? '3px solid #ff8800' : 'none' }}>{p.name}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== products.length - 1 ? '3px solid #ff8800' : 'none' }}>₹{p.price}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== products.length - 1 ? '3px solid #ff8800' : 'none' }}>{p.stock}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== products.length - 1 ? '3px solid #ff8800' : 'none' }}>{p.category}</td>
-              <td style={{ padding: '1rem', borderRight: '2px solid #ffd699', borderBottom: idx !== products.length - 1 ? '3px solid #ff8800' : 'none' }}>{p.unit || '-'}</td>
-              <td style={{ padding: '1rem', borderBottom: idx !== products.length - 1 ? '3px solid #ff8800' : 'none' }}>
-                <button onClick={() => handleEdit(p)} style={{ marginRight: '0.5rem', background: '#2ecc40', color: '#fff', border: 'none', padding: '0.3rem 0.8rem', borderRadius: '4px' }}>Edit</button>
-                <button onClick={() => handleDelete(p._id || p.id)} style={{ background: '#ff8800', color: '#fff', border: 'none', padding: '0.3rem 0.8rem', borderRadius: '4px' }}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <><AdminNavbar />
+      <Box sx={{ paddingTop: { xs: '56px', md: '30px' } }}></Box>
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <Box sx={{ flexGrow: 1, p: { xs: 1, md: 0 } }}>
+          <Typography variant="h4" color="primary" sx={{ mb: 2, fontWeight: 700 }}>
+            Product Management
+          </Typography>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {loading && <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><CircularProgress size={24} sx={{ mr: 2 }} /> Loading...</Box>}
+          <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+            <Button variant="contained" color="warning" startIcon={<AddIcon />} onClick={handleAddClick}>Add Product</Button>
+            <Button variant="contained" color="success" startIcon={<CategoryIcon />} onClick={() => setShowCategoryDialog(true)}>Add Category/Type</Button>
+            <Button variant="contained" color="info" startIcon={<LabelIcon />} onClick={openProductNameForm}>Add Product Name</Button>
+          </Stack>
+          {/* Category management area */}
+          <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap', mb: 3 }}>
+            <Box>
+              <Typography fontWeight={600} mb={1}>Categories/Types:</Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {categories.map(cat => (
+                  <Chip
+                    key={cat.name}
+                    label={cat.name}
+                    onDelete={() => handleRemoveCategory(cat.name)}
+                    deleteIcon={<DeleteIcon />}
+                    color="default"
+                    sx={{ mb: 1 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+            {/* Product name management area */}
+            <Box>
+              <Typography fontWeight={600} mb={1}>Product Names:</Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {productNames.map(name => (
+                  <Chip
+                    key={name}
+                    label={name}
+                    onDelete={() => handleRemoveProductName(name)}
+                    deleteIcon={<DeleteIcon />}
+                    color="info"
+                    sx={{ mb: 1 }}
+                  />
+                ))}
+              </Stack>
+              {/* Add Product Name Dialog */}
+              <Dialog open={showProductNameForm} onClose={() => setShowProductNameForm(false)}>
+                <DialogTitle>Add Product Name</DialogTitle>
+                <DialogContent>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Select Category</InputLabel>
+                    <Select
+                      value={newProductNameCategory}
+                      onChange={e => setNewProductNameCategory(e.target.value)}
+                      label="Select Category"
+                    >
+                      <MenuItem value=""><em>Select Category</em></MenuItem>
+                      {categories.map(cat => <MenuItem key={cat.name} value={cat.name}>{cat.name}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label="New Product Name"
+                    value={newProductName}
+                    onChange={e => setNewProductName(e.target.value)}
+                    fullWidth
+                  />
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => { setShowProductNameForm(false); setNewProductName(''); setNewProductNameCategory(''); }}>Cancel</Button>
+                  <Button onClick={handleAddProductName} variant="contained" color="info">Add</Button>
+                </DialogActions>
+              </Dialog>
+            </Box>
+          </Box>
+          {/* Product Form Dialog */}
+          <Dialog open={showForm} onClose={() => { setShowForm(false); setEditingId(null); setForm({ name: '', price: '', stock: '', category: '', unit: '' }); }} maxWidth="md" fullWidth>
+            <DialogTitle>{editingId ? 'Edit Product' : 'Add Product'}</DialogTitle>
+            <DialogContent>
+              <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ mt: 1 }}>
+                <FormControl sx={{ minWidth: 180 }}>
+                  <InputLabel>Select Product Name</InputLabel>
+                  <Select
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    label="Select Product Name"
+                    required
+                  >
+                    <MenuItem value=""><em>Select Product Name</em></MenuItem>
+                    {productNames.map(name => <MenuItem key={name} value={name}>{name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <TextField
+                  name="price"
+                  value={form.price}
+                  onChange={handleChange}
+                  label="Price"
+                  type="number"
+                  required
+                  sx={{ minWidth: 120 }}
+                />
+                <TextField
+                  name="stock"
+                  value={form.stock}
+                  onChange={handleChange}
+                  label="Stock"
+                  type="number"
+                  required
+                  sx={{ minWidth: 120 }}
+                />
+                <FormControl sx={{ minWidth: 160 }}>
+                  <InputLabel>Select Category/Type</InputLabel>
+                  <Select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    label="Select Category/Type"
+                    required
+                  >
+                    <MenuItem value=""><em>Select Category/Type</em></MenuItem>
+                    {categories.map(cat => <MenuItem key={cat.name} value={cat.name}>{cat.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <TextField
+                  name="unit"
+                  value={unit}
+                  label="Unit"
+                  InputProps={{ readOnly: true }}
+                  sx={{ minWidth: 100, background: '#f5f5f5' }}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setShowForm(false); setEditingId(null); setForm({ name: '', price: '', stock: '', category: '', unit: '' }); }}>Cancel</Button>
+              <Button onClick={handleSubmit} variant="contained" color="warning">{editingId ? 'Update' : 'Add'}</Button>
+            </DialogActions>
+          </Dialog>
+          {/* Add Category/Type Dialog */}
+          <Dialog open={showCategoryDialog} onClose={() => setShowCategoryDialog(false)}>
+            <DialogTitle>Add Category/Type</DialogTitle>
+            <DialogContent>
+              <TextField
+                label="New Category/Type"
+                value={newCategory}
+                onChange={e => setNewCategory(e.target.value)}
+                fullWidth
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                label="Unit (e.g. per unit, kg)"
+                value={newCategoryUnit}
+                onChange={e => setNewCategoryUnit(e.target.value)}
+                fullWidth
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setShowCategoryDialog(false); setNewCategory(''); setNewCategoryUnit(''); }}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!newCategory || !newCategoryUnit) return;
+                setLoading(true);
+                setError('');
+                try {
+                  await fetch(`${API_BASE}/categories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: toTitleCase(newCategory), unit: toTitleCase(newCategoryUnit) }),
+                  });
+                  setNewCategory('');
+                  setNewCategoryUnit('');
+                  setShowCategoryDialog(false);
+                  await fetchAll();
+                  if (showForm) setForm(f => ({ ...f, category: toTitleCase(newCategory) }));
+                } catch (err) {
+                  setError('Failed to add category.');
+                }
+                setLoading(false);
+              }} variant="contained" color="warning">Add Category</Button>
+            </DialogActions>
+          </Dialog>
+          {/* Product Table */}
+          <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3, boxShadow: 3 }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ background: '#ff8800' }}>
+                  <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Name</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Price</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Stock</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Category/Type</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Unit</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {products.map((p) => (
+                  <TableRow key={p._id || p.id} hover>
+                    <TableCell sx={{ fontWeight: 500 }}>{p.name}</TableCell>
+                    <TableCell>₹{p.price}</TableCell>
+                    <TableCell>{p.stock}</TableCell>
+                    <TableCell>{p.category}</TableCell>
+                    <TableCell>{p.unit || '-'}</TableCell>
+                    <TableCell>
+                      <IconButton color="success" onClick={() => handleEdit(p)}><EditIcon /></IconButton>
+                      <IconButton color="warning" onClick={() => handleDelete(p._id || p.id)}><DeleteIcon /></IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      </Box>
+    </>
   );
 };
 
