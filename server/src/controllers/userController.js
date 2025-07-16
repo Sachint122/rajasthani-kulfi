@@ -1,106 +1,39 @@
 const User = require('../models/User');
 
-// Get all users (admin only)
-exports.getAllUsers = async (req, res) => {
-    try {
-        const users = await User.find().select('-password');
-        res.json(users);
-    } catch (err) {
-        console.error('Error getting users:', err);
-        res.status(500).json({ error: err.message });
-    }
+// Get all users
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-// Get single user (admin only)
-exports.getUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id).select('-password');
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json(user);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// Add a user (admin only)
+exports.addUser = async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
+    // Check if user already exists by phone
+    const exists = await User.findOne({ phone });
+    if (exists) return res.status(400).json({ error: 'User already exists with this phone number' });
+    // Create user with default password and role 'user'
+    const user = new User({ name, phone, email: `${phone}@example.com`, password: phone, role: 'user' });
+    await user.save();
+    res.status(201).json({ id: user._id, name: user.name, phone: user.phone, role: user.role });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-// Update user (admin only)
-exports.updateUser = async (req, res) => {
-    try {
-        const { name, email, phone, role, isActive } = req.body;
-        
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            { name, email, phone, role, isActive },
-            { new: true, runValidators: true }
-        ).select('-password');
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json(user);
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-};
-
-// Delete user (admin only)
+// Delete a user (admin only)
 exports.deleteUser = async (req, res) => {
-    try {
-        const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json({ message: 'User deleted successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-
-// Get user statistics (admin only)
-exports.getUserStats = async (req, res) => {
-    try {
-        const totalUsers = await User.countDocuments();
-        const activeUsers = await User.countDocuments({ isActive: true });
-        const adminUsers = await User.countDocuments({ role: 'admin' });
-        const regularUsers = await User.countDocuments({ role: 'user' });
-
-        const stats = {
-            totalUsers,
-            activeUsers,
-            adminUsers,
-            regularUsers
-        };
-        
-        res.json(stats);
-    } catch (err) {
-        console.error('Error getting user stats:', err);
-        res.status(500).json({ error: err.message });
-    }
-};
-
-// Toggle user status (admin only)
-exports.toggleUserStatus = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        user.isActive = !user.isActive;
-        await user.save();
-
-        res.json({ 
-            message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                isActive: user.isActive
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }; 

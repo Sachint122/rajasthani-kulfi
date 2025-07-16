@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    description: { type: String, required: true },
+    description: { type: String }, // Make optional
     price: { type: Number, required: true },
-    category: { type: String, enum: ['kulfi', 'ice-cream', 'special'], required: true },
+    category: { type: String, required: true }, // Remove enum
+    unit: { type: String },
     image: { type: String },
     isAvailable: { type: Boolean, default: true },
     stock: { type: Number, default: 0 },

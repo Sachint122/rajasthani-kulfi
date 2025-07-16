@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const ProductName = require('../models/ProductName');
 
 // Get all products
 exports.getProducts = async (req, res) => {
@@ -36,14 +37,16 @@ exports.getProduct = async (req, res) => {
 // Create product (admin only)
 exports.createProduct = async (req, res) => {
     try {
-        const { name, description, price, category, image, isAvailable } = req.body;
+        const { name, description, price, category, image, isAvailable, unit, stock } = req.body;
         const product = new Product({
             name,
-            description,
+            description: description || '',
             price,
             category,
             image,
-            isAvailable
+            isAvailable,
+            unit,
+            stock
         });
         await product.save();
         res.status(201).json(product);
@@ -110,4 +113,41 @@ exports.getProductsByCategory = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+}; 
+
+// Product Name CRUD
+exports.getProductNames = async (req, res) => {
+  try {
+    const { category } = req.query;
+    let query = {};
+    if (category) query.category = category;
+    const names = await ProductName.find(query).sort({ name: 1 });
+    res.json(names);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.addProductName = async (req, res) => {
+  try {
+    const { name, category } = req.body;
+    if (!name || !category) return res.status(400).json({ error: 'Name and category are required' });
+    const exists = await ProductName.findOne({ name, category });
+    if (exists) return res.status(400).json({ error: 'Product name already exists for this category' });
+    const productName = new ProductName({ name, category });
+    await productName.save();
+    res.status(201).json(productName);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deleteProductName = async (req, res) => {
+  try {
+    const productName = await ProductName.findByIdAndDelete(req.params.id);
+    if (!productName) return res.status(404).json({ error: 'Product name not found' });
+    res.json({ message: 'Product name deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }; 
