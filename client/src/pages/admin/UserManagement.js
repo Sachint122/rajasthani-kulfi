@@ -5,15 +5,18 @@ import {
 } from '@mui/material';
 import AdminNavbar from '../../components/AdminNavbar';
 import MenuIcon from '@mui/icons-material/Menu';
+import PaymentIcon from '@mui/icons-material/Payment';
+import DeleteIcon from '@mui/icons-material/Delete';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import { useNotification } from '../../components/NotificationProvider';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://192.168.152.199:5000/api';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({ name: '', phone: '', lastValue: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [userRecords, setUserRecords] = useState({}); // { phone: { sales: [], transactions: [] } }
@@ -25,6 +28,8 @@ const UserManagement = () => {
   const [showAddUser, setShowAddUser] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
+  const { showNotification } = useNotification();
 
   const getAuthHeaders = () => {
     const token = sessionStorage.getItem('token');
@@ -100,7 +105,6 @@ const UserManagement = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
     try {
       const formattedForm = { ...form, name: toTitleCase(form.name), lastValue: Number(form.lastValue) || 0 };
       const res = await fetch(`${API_BASE}/users`, {
@@ -110,15 +114,15 @@ const UserManagement = () => {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to add user.');
+        showNotification(data.error || 'Failed to add user.', 'error');
       } else {
-        setSuccess('User added successfully!');
+        showNotification('User added successfully!', 'success');
         setForm({ name: '', phone: '', lastValue: '' });
         await fetchUsers();
         setShowAddUser(false);
       }
     } catch (err) {
-      setError('Failed to add user.');
+      showNotification('Failed to add user.', 'error');
     }
     setLoading(false);
   };
@@ -126,7 +130,6 @@ const UserManagement = () => {
   const handleDelete = async id => {
     setLoading(true);
     setError('');
-    setSuccess('');
     try {
       const token = sessionStorage.getItem('token');
       const res = await fetch(`${API_BASE}/users/${id}`, {
@@ -135,13 +138,13 @@ const UserManagement = () => {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to delete user.');
+        showNotification(data.error || 'Failed to delete user.', 'error');
       } else {
-        setSuccess('User deleted successfully!');
+        showNotification('User deleted successfully!', 'success');
         await fetchUsers();
       }
     } catch (err) {
-      setError('Failed to delete user.');
+      showNotification('Failed to delete user.', 'error');
     }
     setLoading(false);
   };
@@ -284,6 +287,11 @@ const UserManagement = () => {
     doc.setFontSize(12);
     doc.setTextColor(10, 80, 160);
     doc.text('Thank you for your business!', 105, 285, { align: 'center' });
+    // Unique message
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 136, 0);
+    doc.text('Thank you for being a valued customer!', 105, 292, { align: 'center' });
     doc.save(`Statement_${user.name}.pdf`);
   };
 
@@ -295,7 +303,6 @@ const UserManagement = () => {
   const handleEditSave = async (user) => {
     setLoading(true);
     setError('');
-    setSuccess('');
     try {
       const token = sessionStorage.getItem('token');
       const res = await fetch(`${API_BASE}/users/${user._id || user.id}`, {
@@ -305,14 +312,14 @@ const UserManagement = () => {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to update last value.');
+        showNotification(data.error || 'Failed to update last value.', 'error');
       } else {
-        setSuccess('Last value updated!');
+        showNotification('Last value updated!', 'success');
         await fetchUsers();
         setEditingId(null);
       }
     } catch (err) {
-      setError('Failed to update last value.');
+      showNotification('Failed to update last value.', 'error');
     }
     setLoading(false);
   };
@@ -347,7 +354,6 @@ const UserManagement = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
     try {
       const token = sessionStorage.getItem('token');
       const res = await fetch(`${API_BASE}/users/transaction`, {
@@ -361,30 +367,30 @@ const UserManagement = () => {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to record payment.');
+        showNotification(data.error || 'Failed to record payment.', 'error');
       } else {
-        setSuccess('Payment recorded!');
+        showNotification('Payment recorded!', 'success');
         // Refresh records
         const rec = await fetchUserRecords(paymentUser.phone);
         setUserRecords(prev => ({ ...prev, [paymentUser.phone]: rec }));
         handleClosePaymentDialog();
       }
     } catch (err) {
-      setError('Failed to record payment.');
+      showNotification('Failed to record payment.', 'error');
     }
     setLoading(false);
   };
 
   return (
-    <><AdminNavbar />
-      <Box sx={{ paddingTop: { xs: '56px', md: '30px' } }}>
+    <>
+      <AdminNavbar />
+      <Box sx={{ paddingTop: { xs: '56px', md: '60px' }, px: { xs: '0.5rem', md: '0.5rem' } }}>
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
           <Box sx={{ flexGrow: 1, p: { xs: 1, md: 0 } }}>
             <Typography variant="h4" color="primary" sx={{ mb: { xs: 2, md: 3 }, fontWeight: 700, fontSize: { xs: 22, md: 32 }, textAlign: { xs: 'center', md: 'left' } }}>
               User Management
             </Typography>
             {error && <Alert severity="error" sx={{ mb: { xs: 2, md: 3 } }}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ mb: { xs: 2, md: 3 } }}>{success}</Alert>}
             {loading && <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, justifyContent: { xs: 'center', md: 'flex-start' } }}><CircularProgress size={24} sx={{ mr: 2 }} /> Loading...</Box>}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: { xs: 2, md: 3 }, alignItems: { xs: 'stretch', sm: 'center' } }}>
               <Button variant="contained" color="warning" onClick={() => setShowAddUser(true)} sx={{ width: { xs: '100%', sm: 'auto' }, fontSize: { xs: 16, md: 18 } }}>Add User</Button>
@@ -403,37 +409,64 @@ const UserManagement = () => {
                 <Button onClick={handleSubmit} variant="contained" color="warning" fullWidth={true} sx={{ fontSize: { xs: 16, md: 18 } }}>Add</Button>
               </DialogActions>
             </Dialog>
-            {/* User Table */}
-            <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3, boxShadow: 3, overflowX: 'auto', maxWidth: '100%' }}>
-              <Table size="small" sx={{ minWidth: 600 }}>
-                <TableHead>
-                  <TableRow sx={{ background: '#ff8800' }}>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 120, fontSize: { xs: 14, md: 16 } }}>Name</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 120, fontSize: { xs: 14, md: 16 } }}>Phone</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 120, fontSize: { xs: 14, md: 16 } }}>Last Value (Rup)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 220, fontSize: { xs: 14, md: 16 } }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {users.filter(u => u.role !== 'admin').map(u => (
-                    <TableRow key={u._id || u.id} hover>
-                      <TableCell sx={{ fontWeight: 500, fontSize: { xs: 14, md: 16 } }}>
-                        <span style={{ color: '#0A50A0', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleOpenModal(u)}>{u.name}</span>
-                      </TableCell>
-                      <TableCell sx={{ fontSize: { xs: 14, md: 16 } }}>{u.phone}</TableCell>
-                      <TableCell sx={{ fontSize: { xs: 14, md: 16 } }}>{calculateLastValue(u.phone)}</TableCell>
-                      <TableCell sx={{ fontSize: { xs: 14, md: 16 } }}>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                          <Button variant="outlined" size="small" onClick={() => handleOpenPaymentDialog(u)} fullWidth={true} sx={{ fontSize: { xs: 14, md: 16 } }}>Record Payment</Button>
-                          <Button variant="outlined" size="small" color="error" onClick={() => handleDelete(u._id || u.id)} fullWidth={true} sx={{ fontSize: { xs: 14, md: 16 } }}>Delete</Button>
-                          <Button variant="contained" size="small" color="info" onClick={() => handleStatementPdf(u)} fullWidth={true} sx={{ fontSize: { xs: 14, md: 16 } }}>Statement PDF</Button>
-                        </Stack>
-                      </TableCell>
+            {/* User Table/Card View */}
+            {isXs ? (
+              <Stack spacing={2} sx={{ mt: 4 }}>
+                {users.filter(u => u.role !== 'admin').map(u => (
+                  <Paper key={u._id || u.id} elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="h6" fontWeight={700} sx={{ fontSize: 22 }}>{u.name}</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 20 }}>Phone: {u.phone}</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 20 }}>Last Value (Rup): {calculateLastValue(u.phone)}</Typography>
+                    <Stack direction="column" spacing={1.5} mt={2}>
+                      <Button variant="contained" color="primary" fullWidth sx={{ fontSize: 20, py: 1.5 }} onClick={() => handleOpenPaymentDialog(u)}>Record Payment</Button>
+                      <Button variant="contained" color="info" fullWidth sx={{ fontSize: 20, py: 1.5 }} onClick={() => handleStatementPdf(u)}>Statement PDF</Button>
+                      <Button variant="contained" color="error" fullWidth sx={{ fontSize: 20, py: 1.5 }} onClick={() => handleDelete(u._id || u.id)}>Delete</Button>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3, boxShadow: 3, overflowX: 'hidden', maxWidth: '100%' }}>
+                <Table size="small" sx={{ minWidth: 0, width: '100%' }}>
+                  <TableHead>
+                    <TableRow sx={{ background: '#ff8800' }}>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 80, px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>Name</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 80, px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>Phone</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 60, px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>Last Value (Rup)</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, minWidth: 120, px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>Actions</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {users.filter(u => u.role !== 'admin').map(u => (
+                      <TableRow key={u._id || u.id} hover>
+                        <TableCell sx={{ fontWeight: 500, px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>
+                          <span style={{ color: '#0A50A0', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleOpenModal(u)}>{u.name}</span>
+                        </TableCell>
+                        <TableCell sx={{ px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>{u.phone}</TableCell>
+                        <TableCell sx={{ px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>{calculateLastValue(u.phone)}</TableCell>
+                        <TableCell sx={{ px: { xs: 0.5, md: 2 }, fontSize: { xs: 12, md: 16 } }}>
+                          <Stack direction="row" spacing={0.5}>
+                            {isMobile ? (
+                              <>
+                                <IconButton color="primary" size="small" onClick={() => handleOpenPaymentDialog(u)}><PaymentIcon fontSize="small" /></IconButton>
+                                <IconButton color="error" size="small" onClick={() => handleDelete(u._id || u.id)}><DeleteIcon fontSize="small" /></IconButton>
+                                <IconButton color="info" size="small" onClick={() => handleStatementPdf(u)}><PictureAsPdfIcon fontSize="small" /></IconButton>
+                              </>
+                            ) : (
+                              <>
+                                <Button variant="outlined" size="small" onClick={() => handleOpenPaymentDialog(u)} sx={{ fontSize: 16 }}>Record Payment</Button>
+                                <Button variant="outlined" size="small" color="error" onClick={() => handleDelete(u._id || u.id)} sx={{ fontSize: 16 }}>Delete</Button>
+                                <Button variant="contained" size="small" color="info" onClick={() => handleStatementPdf(u)} sx={{ fontSize: 16 }}>Statement PDF</Button>
+                              </>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
             {/* User Details Modal */}
             <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="md" fullWidth>
               <DialogTitle>User Details: {modalUser?.name}</DialogTitle>

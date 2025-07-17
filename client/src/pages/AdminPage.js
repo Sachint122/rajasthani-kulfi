@@ -1,8 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-
-const SHOP_NAME = 'Shree Ram Rajasthan Kulfi House';
-
+import { Routes, Route } from 'react-router-dom';
 const Dashboard = lazy(() => import('./admin/Dashboard'));
 const ProductManagement = lazy(() => import('./admin/ProductManagement'));
 const ExpenseManagement = lazy(() => import('./admin/ExpenseManagement'));
@@ -20,12 +17,10 @@ const COLORS = {
 };
 
 const AdminPage = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'sans-serif', background: COLORS.lightBg }}>
-      <main style={{ flex: 1, padding: '2.5rem 3rem', background: COLORS.lightBg }}>
+      <main style={{ flex: 1, padding: '0.5rem 1rem', background: COLORS.lightBg }}>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>
             <Route path="/" element={<Dashboard />} />

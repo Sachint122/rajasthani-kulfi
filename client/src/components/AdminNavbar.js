@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, IconButton, Typography, Button, Drawer, List, ListItemIcon, ListItemText, Box, useTheme, useMediaQuery, ListItemButton } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Typography, Button, Drawer, List, ListItemIcon, ListItemText, Box, useTheme, useMediaQuery, ListItemButton, Divider } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReceiptIcon from '@mui/icons-material/Receipt';
@@ -79,7 +79,8 @@ const AdminNavbar = () => {
             >
                 <Box sx={{ width: 220 }} role="presentation">
                     <List>
-                        {navItems.map((item) => (
+                        <Divider sx={{ my: 3 }} />
+                        {navItems.map((item, idx) => (
                             <ListItemButton
                                 key={item.text}
                                 selected={location.pathname === item.path}

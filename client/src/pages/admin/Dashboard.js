@@ -11,7 +11,7 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import { useTheme, useMediaQuery } from '@mui/material';
 import AdminNavbar from '../../components/AdminNavbar';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://192.168.152.199:5000/api';
 const COLORS = {
   green: '#2ecc40',
   orange: '#ff8800',
@@ -155,7 +155,7 @@ const Dashboard = () => {
   return (
     <>
       <AdminNavbar />
-      <Box sx={{ paddingTop: { xs: '56px', md: '30px' } }}>
+      <Box sx={{ paddingTop: { xs: '56px', md: '60px' }, px: { xs: '0.5rem', md: '0.5rem' } }}>
         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.lightBg }}>
           <Box sx={{ flexGrow: 1, p: { xs: 1, md: 0 } }}>
             <Box sx={{ p: { xs: 2, md: 0 } }}>

@@ -6,8 +6,9 @@ import {
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AdminNavbar from '../../components/AdminNavbar';
 import MenuIcon from '@mui/icons-material/Menu';
+import { useNotification } from '../../components/NotificationProvider';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://192.168.152.199:5000/api';
 
 const SalesManagement = () => {
   const [categories, setCategories] = useState([]);
@@ -27,6 +28,8 @@ const SalesManagement = () => {
   const [success, setSuccess] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
+  const { showNotification } = useNotification();
 
   const getAuthHeaders = () => {
     const token = sessionStorage.getItem('token');
@@ -124,7 +127,7 @@ const SalesManagement = () => {
     setError('');
     setSuccess('');
     if (!form.productId || !form.quantity || Number(form.quantity) < 1) {
-      setError('Please select a valid product and enter a valid quantity.');
+      showNotification('Please select a valid product and enter a valid quantity.', 'error');
       setLoading(false);
       return;
     }
@@ -142,9 +145,9 @@ const SalesManagement = () => {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to record sale.');
+        showNotification(data.error || 'Failed to record sale.', 'error');
       } else {
-        setSuccess('Sale recorded successfully!');
+        showNotification('Sale recorded successfully!', 'success');
         setForm({
           category: '',
           productName: '',
@@ -157,7 +160,7 @@ const SalesManagement = () => {
         await fetchSales();
       }
     } catch (err) {
-      setError('Failed to record sale.');
+      showNotification('Failed to record sale.', 'error');
     }
     setLoading(false);
   };
@@ -166,16 +169,26 @@ const SalesManagement = () => {
 
   // Handler for sending PDF to WhatsApp (placeholder)
   const handleSendPdf = (sale) => {
-    const customerSales = sales.filter(s => s.customerPhone === sale.customerPhone);
-    const lastTotalBookValue = customerSales
-      .filter(s => s._id !== sale._id)
-      .reduce((acc, s) => acc + (s.total || 0), 0);
+    // Get today's date in YYYY-MM-DD
+    const todayStr = new Date().toISOString().slice(0, 10);
+    // Filter all sales for this customer for today
+    const todaysSales = sales.filter(s =>
+      s.customerPhone === sale.customerPhone &&
+      s.date && new Date(s.date).toISOString().slice(0, 10) === todayStr
+    );
+    if (todaysSales.length === 0) {
+      showNotification('No sales found for this customer today.', 'info');
+      return;
+    }
+    // Calculate last value (all sales for this customer except today's)
+    const previousSales = sales.filter(s =>
+      s.customerPhone === sale.customerPhone &&
+      s.date && new Date(s.date).toISOString().slice(0, 10) !== todayStr
+    );
+    const lastTotalBookValue = previousSales.reduce((acc, s) => acc + (s.total || 0), 0);
     const lastValueCompleted = lastTotalBookValue === 0;
-
     const doc = new jsPDF();
     // --- HEADER ---
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(32);
     doc.text('INVOICE', 14, 36);
@@ -183,9 +196,8 @@ const SalesManagement = () => {
     doc.setFontSize(12);
     doc.text('Date:', 14, 46);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${new Date(sale.date).toLocaleDateString()}`, 30, 46);
+    doc.text(`${new Date().toLocaleDateString()}`, 30, 46);
     doc.setFont('helvetica', 'normal');
-
     // --- BILL TO / FROM ---
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
@@ -197,7 +209,6 @@ const SalesManagement = () => {
     doc.text('Shree Ram Rajasthan Kulfi House', 110, 62);
     doc.text('KareliBagh, Vadodara ,Gujarat', 110, 68);
     doc.text('Phone: +918733888407', 110, 74);
-
     // --- TABLE HEADER ---
     let y = 90;
     doc.setFillColor(240, 240, 240);
@@ -208,36 +219,31 @@ const SalesManagement = () => {
     doc.text('Quantity', 80, y + 7);
     doc.text('Price', 120, y + 7);
     doc.text('Amount', 170, y + 7);
-
-    // Add more vertical space before product row
+    // --- TABLE ROWS ---
     y += 14;
+    let totalSum = 0;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
-    doc.text(`${sale.productName}`, 18, y);
-    doc.text(`${sale.quantity}`, 85, y, { align: 'right' });
-    doc.text(`${sale.price}`, 125, y, { align: 'right' });
-    doc.text(`${sale.total}`, 175, y, { align: 'right' });
-    // Draw horizontal line under product row
-    y += 4;
-    doc.setDrawColor(200, 200, 200);
-    doc.line(14, y, 196, y);
-
+    todaysSales.forEach(s => {
+      doc.text(`${s.productName}`, 18, y);
+      doc.text(`${s.quantity}`, 85, y, { align: 'right' });
+      doc.text(`${s.price}`, 125, y, { align: 'right' });
+      doc.text(`${s.total}`, 175, y, { align: 'right' });
+      totalSum += s.total || 0;
+      y += 8;
+    });
     // --- TOTAL ROW ---
-    y += 8;
+    y += 4;
     doc.setFont('helvetica', 'bold');
     doc.text('Total', 120, y);
-    doc.text(`${sale.total}`, 175, y, { align: 'right' });
-
-    // --- PAYMENT METHOD & NOTE ---
+    doc.text(`${totalSum}`, 175, y, { align: 'right' });
+    // --- FOOTER ---
     y += 14;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    y += 8;
-    doc.setFont('helvetica', 'bold');
     doc.text('Note:', 14, y);
     doc.setFont('helvetica', 'normal');
     doc.text('Thank you for choosing us!', 32, y);
-
     // --- LAST VALUE STATUS ---
     y += 12;
     doc.setFont('helvetica', 'bold');
@@ -255,7 +261,6 @@ const SalesManagement = () => {
       doc.text('Not Completed', 60, y);
     }
     doc.setTextColor(0, 0, 0);
-
     // --- WAVY FOOTER ---
     doc.setFillColor(220, 220, 220);
     doc.ellipse(105, 295, 120, 20, 'F');
@@ -263,127 +268,162 @@ const SalesManagement = () => {
     doc.ellipse(105, 305, 120, 20, 'F');
     doc.setFillColor(255, 136, 0);
     doc.ellipse(105, 315, 120, 20, 'F');
-
-    doc.save(`Bill_${sale.customerName || 'Customer'}_${sale._id}.pdf`);
+    doc.save(`Bill_${sale.customerName || 'Customer'}_${sale.customerPhone}_${todayStr}.pdf`);
   };
 
   return (
     <>
       <AdminNavbar />
-      <Box sx={{ paddingTop: { xs: '56px', md: '30px' } }}>
-        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-          <Box sx={{ flexGrow: 1, p: { xs: 1, md: 0 } }}>
-            <Typography variant="h4" color="primary" sx={{ mb: 2, fontWeight: 700 }}>
+      <Box sx={{ paddingTop: { xs: '56px', md: '60px' }, px: { xs: '0.5rem', md: '0.5rem' } }}>
+        <Box sx={{ minHeight: 0, m: 0, p: 0 }}>
+          <Box sx={{ flexGrow: 1, m: 0, p: 0 }}>
+            <Typography variant="h4" color="primary" sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', md: '2.125rem' }, mb: 0 }}>
               Sales Management
             </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-            <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-              <FormControl sx={{ minWidth: 140 }}>
-                <InputLabel>Select Category</InputLabel>
-                <Select
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  label="Select Category"
-                  required
-                >
-                  <MenuItem value=""><em>Select Category</em></MenuItem>
-                  {categories.map(c => (
-                    <MenuItem key={c._id} value={c.name}>{c.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl sx={{ minWidth: 180 }} disabled={!form.category}>
-                <InputLabel>Select Product Name</InputLabel>
-                <Select
-                  name="productName"
-                  value={form.productName}
-                  onChange={handleChange}
-                  label="Select Product Name"
-                  required
-                  disabled={!form.category}
-                >
-                  <MenuItem value=""><em>{form.category ? 'Select Product Name' : 'Select Category First'}</em></MenuItem>
-                  {products
-                    .filter(p => p.category && p.category.trim().toLowerCase() === form.category.trim().toLowerCase())
-                    .map(p => p.name)
-                    .filter((name, idx, arr) => arr.indexOf(name) === idx)
-                    .map(name => (
-                      <MenuItem key={name} value={name}>{name}</MenuItem>
+            {error && <Alert severity="error" sx={{ mb: 0 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 0 }}>{success}</Alert>}
+            <Box component="form" onSubmit={handleSubmit} sx={{ mb: 0, m: 0, p: 0 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+                <FormControl sx={{ minWidth: { xs: '100%', md: 140 }, flex: 1 }} fullWidth={isMobile}>
+                  <InputLabel>Select Category</InputLabel>
+                  <Select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    label="Select Category"
+                    required
+                    fullWidth
+                  >
+                    <MenuItem value=""><em>Select Category</em></MenuItem>
+                    {categories.map(c => (
+                      <MenuItem key={c._id} value={c.name}>{c.name}</MenuItem>
                     ))}
-                </Select>
-              </FormControl>
-              <TextField
-                name="quantity"
-                value={form.quantity}
-                onChange={handleChange}
-                label="Quantity"
-                type="number"
-                min={1}
-                max={selectedProduct ? selectedProduct.stock : undefined}
-                required
-                sx={{ minWidth: 100 }}
-              />
-              <FormControl sx={{ minWidth: 160 }}>
-                <InputLabel>Select Customer (optional)</InputLabel>
-                <Select
-                  name="customerName"
-                  value={form.customerName}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ minWidth: { xs: '100%', md: 180 }, flex: 1 }} fullWidth={isMobile} disabled={!form.category}>
+                  <InputLabel>Select Product Name</InputLabel>
+                  <Select
+                    name="productName"
+                    value={form.productName}
+                    onChange={handleChange}
+                    label="Select Product Name"
+                    required
+                    disabled={!form.category}
+                    fullWidth
+                  >
+                    <MenuItem value=""><em>{form.category ? 'Select Product Name' : 'Select Category First'}</em></MenuItem>
+                    {products
+                      .filter(p => p.category && p.category.trim().toLowerCase() === form.category.trim().toLowerCase())
+                      .map(p => p.name)
+                      .filter((name, idx, arr) => arr.indexOf(name) === idx)
+                      .map(name => (
+                        <MenuItem key={name} value={name}>{name}</MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  name="quantity"
+                  value={form.quantity}
                   onChange={handleChange}
-                  label="Select Customer (optional)"
+                  label="Quantity"
+                  type="number"
+                  min={1}
+                  max={selectedProduct ? selectedProduct.stock : undefined}
+                  required
+                  sx={{ minWidth: { xs: '100%', md: 100 }, flex: 1 }}
+                  fullWidth={isMobile}
+                />
+                <FormControl sx={{ minWidth: { xs: '100%', md: 160 }, flex: 1 }} fullWidth={isMobile}>
+                  <InputLabel>Select Customer (optional)</InputLabel>
+                  <Select
+                    name="customerName"
+                    value={form.customerName}
+                    onChange={handleChange}
+                    label="Select Customer (optional)"
+                    fullWidth
+                  >
+                    <MenuItem value=""><em>Select Customer (optional)</em></MenuItem>
+                    {users.map(u => (
+                      <MenuItem key={u._id || u.id} value={u.name}>{u.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  name="customerPhone"
+                  value={form.customerPhone}
+                  onChange={handleChange}
+                  label="Customer Phone (optional)"
+                  InputProps={{ readOnly: !!form.customerName }}
+                  sx={{ minWidth: { xs: '100%', md: 160 }, flex: 1 }}
+                  fullWidth={isMobile}
+                />
+                <Button type="submit" variant="contained" color="warning" sx={{ fontWeight: 600, minWidth: { xs: '100%', md: 140 }, height: 48 }}
+                  disabled={loading || !form.productId || !form.quantity || Number(form.quantity) < 1}
+                  fullWidth={isMobile}
                 >
-                  <MenuItem value=""><em>Select Customer (optional)</em></MenuItem>
-                  {users.map(u => (
-                    <MenuItem key={u._id || u.id} value={u.name}>{u.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                name="customerPhone"
-                value={form.customerPhone}
-                onChange={handleChange}
-                label="Customer Phone (optional)"
-                InputProps={{ readOnly: !!form.customerName }}
-                sx={{ minWidth: 160 }}
-              />
-              <Button type="submit" variant="contained" color="warning" sx={{ fontWeight: 600 }}
-                disabled={loading || !form.productId || !form.quantity || Number(form.quantity) < 1}>
-                {loading ? 'Saving...' : 'Record Sale'}
-              </Button>
+                  {loading ? 'Saving...' : 'Record Sale'}
+                </Button>
+              </Stack>
             </Box>
-            <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3, boxShadow: 3 }}>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ background: '#ff8800' }}>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Product Name</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Price</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Unit</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Quantity</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Total</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Customer Phone</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Send PDF</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {sales.map((s) => (
-                    <TableRow key={s._id} hover>
-                      <TableCell sx={{ fontWeight: 500 }}>{s.productName}</TableCell>
-                      <TableCell>₹{s.price}</TableCell>
-                      <TableCell>{s.unit}</TableCell>
-                      <TableCell>{s.quantity}</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#388e3c' }}>₹{s.total}</TableCell>
-                      <TableCell>{s.customerPhone}</TableCell>
-                      <TableCell>
-                        <IconButton color="success" onClick={() => handleSendPdf(s)}>
-                          <PictureAsPdfIcon />
-                        </IconButton>
-                      </TableCell>
+            {isXs ? (
+              <Stack spacing={2} sx={{ mt: 4 }}>
+                {sales.map((s) => (
+                  <Paper key={s._id} elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="h6" fontWeight={700} sx={{ fontSize: 22, color: '#ff8800' }}>{s.productName}</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 20 }}>Price: ₹{s.price}</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 20 }}>Unit: {s.unit}</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 20 }}>Quantity: {s.quantity}</Typography>
+                    <Typography variant="body1" fontWeight={600} color="#388e3c" sx={{ fontSize: 20 }}>Total: ₹{s.total}</Typography>
+                    <Typography variant="body1" sx={{ fontSize: 20 }}>Customer Phone: {s.customerPhone}</Typography>
+                    <Box mt={2}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="large"
+                        sx={{ fontSize: 20, py: 1.5 }}
+                        startIcon={<PictureAsPdfIcon fontSize="large" />}
+                        onClick={() => handleSendPdf(s)}
+                      >
+                        Send PDF
+                      </Button>
+                    </Box>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3, boxShadow: 3 }}>
+                <Table size={isMobile ? 'small' : 'medium'} sx={{ minWidth: 0, width: '100%' }}>
+                  <TableHead>
+                    <TableRow sx={{ background: '#ff8800' }}>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 80 }}>Product Name</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 60 }}>Price</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 50 }}>Unit</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 60 }}>Quantity</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 70 }}>Total</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 120 }}>Customer Phone</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 80 }}>Send PDF</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {sales.map((s) => (
+                      <TableRow key={s._id} hover>
+                        <TableCell sx={{ fontWeight: 500, px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 80 }}>{s.productName}</TableCell>
+                        <TableCell sx={{ px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 60 }}>₹{s.price}</TableCell>
+                        <TableCell sx={{ px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 50 }}>{s.unit}</TableCell>
+                        <TableCell sx={{ px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 60 }}>{s.quantity}</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#388e3c', px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 70 }}>₹{s.total}</TableCell>
+                        <TableCell sx={{ px: { xs: 1, md: 2 }, fontSize: { xs: '0.9rem', md: '1rem' }, minWidth: 120 }}>{s.customerPhone}</TableCell>
+                        <TableCell sx={{ px: { xs: 1, md: 2 }, minWidth: 80 }}>
+                          <IconButton color="success" onClick={() => handleSendPdf(s)} size={isMobile ? 'small' : 'medium'}>
+                            <PictureAsPdfIcon fontSize={isMobile ? 'small' : 'medium'} />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Box>
         </Box>
       </Box>
