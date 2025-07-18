@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import {
-  Box, Button, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Alert, CircularProgress, Stack, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery, IconButton, AppBar, Toolbar
+  Box, Button, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Alert, CircularProgress, Stack, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery, IconButton
 } from '@mui/material';
 import AdminNavbar from '../../components/AdminNavbar';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useNotification } from '../../components/NotificationProvider';
 
-const API_BASE = 'http://10.67.101.199:5000/api';
+const API_BASE = 'https://rajasthani-kulfi.onrender.com/api';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
