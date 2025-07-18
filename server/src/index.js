@@ -34,9 +34,6 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/business-info', businessInfoRoutes);
 // Removed userRoutes and adminRoutes
 
-app.get('/', (req, res) => {
-    res.send('API is running...');
-});
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);

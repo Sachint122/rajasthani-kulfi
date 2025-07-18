@@ -4,13 +4,12 @@ import {
   Box, Button, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Alert, CircularProgress, Stack, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery, IconButton, AppBar, Toolbar
 } from '@mui/material';
 import AdminNavbar from '../../components/AdminNavbar';
-import MenuIcon from '@mui/icons-material/Menu';
 import PaymentIcon from '@mui/icons-material/Payment';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useNotification } from '../../components/NotificationProvider';
 
-const API_BASE = 'http://192.168.152.199:5000/api';
+const API_BASE = 'http://10.67.101.199:5000/api';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
